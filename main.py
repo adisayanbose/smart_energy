@@ -10,10 +10,10 @@ from PIL import Image
 
 from plotly import graph_objs as go
 
-import fbprophet
-from fbprophet import Prophet
+import prophet
+from prophet import Prophet
 #from prophet import Prophet 
-from fbprophet.plot import plot_plotly
+from prophet.plot import plot_plotly
 
 import base64
 
@@ -348,7 +348,7 @@ if data_file is not None:
         my_expander = st.expander("Electricity Consumption", expanded=True)
         with my_expander:
             st.subheader("Overview of predicted eletrcity consumption")
-            st.set_option('deprecation.showPyplotGlobalUse', False)
+            #st.set_option('deprecation.showPyplotGlobalUse', False)
             periodd.plot(x='ds',xlabel='Datetime', ylabel='Electricity Consumption (kWh)')
             st.pyplot()
             st.subheader("Overview of overall eletrcity consumption")
