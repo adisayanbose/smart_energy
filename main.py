@@ -15,6 +15,48 @@ from prophet import Prophet
 #from prophet import Prophet 
 from prophet.plot import plot_plotly
 
+# Define tariff slabs (units, rate)
+DOMESTIC_SLABS = [
+    (30, 1.90), 
+    (45, 3.00), 
+    (50, 4.50), 
+    (100, 6.00), 
+    (175, 8.75), 
+    (float('inf'), 9.75)  # Last slab for all remaining units
+]
+
+COMMERCIAL_SLABS = [
+    (100, 5.00),
+    (200, 7.50),
+    (float('inf'), 9.00)
+]
+
+INDUSTRIAL_SLABS = [
+    (500, 6.50),
+    (1000, 8.00),
+    (float('inf'), 10.00)
+]
+
+def compute_cost(total_kwh, slabs):
+    cost, remaining = 0.0, total_kwh
+    breakdown = []  # To store each slab's calculation
+    
+    for slab_units, rate in slabs:
+        if remaining <= 0:
+            break
+        units = min(remaining, slab_units)
+        slab_cost = units * rate
+        cost += slab_cost
+        breakdown.append({
+            'limit': slab_units,
+            'units': units,
+            'rate': rate,
+            'cost': slab_cost
+        })
+        remaining -= units
+    
+    return cost, breakdown
+
 import base64
 
 sum=0
@@ -53,7 +95,7 @@ with st.sidebar:
     
     
     image=Image.open('MicrosoftTeams-image.png')
-    st.image(image,use_column_width=True)
+    st.image(image,use_container_width=True)
     st.header('About Us')
     st.write("""**ESDS** brings intelligence and analytics capablities as well as valuable insights, to where they're needed most.
 
@@ -80,6 +122,9 @@ def plot_raw_data():
 
 #new_title = '<p style="font-family:Lobster; color:Green; font-size: 42px;">Step 1: Feed in dataset</p>'
 #st.markdown(new_title, unsafe_allow_html=True)
+
+
+
 
 def example(content):
      st.markdown(f'<p style="text-align:center;background-image: linear-gradient(to right,#ee8004, #fbe54b);color:#080807;font-family:Peace Sans; font-size:40px;border-radius:2%;">{content}</p>', unsafe_allow_html=True)
@@ -182,7 +227,7 @@ if data_file is not None:
         minimumc=0
         if option==0:
     
-            while sum<=200 and i<=(m-1):
+            while sum<=100 and i<=(m-1):
                 sum+=matrix[i][1]
                 sum100+=matrix[i][1]
                 i+=1
@@ -325,22 +370,41 @@ if data_file is not None:
         my_expander = st.expander("Future Electricity Bill", expanded=True)
         with my_expander:
             if option==0 or option==1:
-                st.write("The electricity cost for next",Selected_period," is RM",format(cost,".2f"))
+                st.write("The electricity cost for next",Selected_period," is Rupees",format(cost,".2f"))
             if option==2:
-                st.write("The electricity cost for next",Selected_period," is RM",format(tcost,".2f"))
+                st.write("The electricity cost for next",Selected_period," is Rupees",format(tcost,".2f"))
             st.write("**Electrcity Bill Table**")
             if option==0:
-            
-                table=[['Tariff Blocks(kWh)','Consumption(kWh)','Price(RM)','Amount(RM)'],['200',str(format(round(sum100))),'0.218',str(format(cost100,".2f"))],['100',str(round(sum200)),'0.334',str(format(cost200,".2f"))],['300',str(round(sum300)),'0.516',str(format(cost300,".2f"))],['300',str(round(sum600)),'0.546',str(format(cost600,".2f"))],['Over 900',str(round(sum900)),'0.571',str(format(cost900,".2f"))],['Minimum Monthly Charge','','7.20',str(format(round(minimumc)))],['','','',''],['Total',str(round(sum)),'',str(format(cost,".2f"))]]
-                st.table(table)
+                        total_cost, cost_breakdown = compute_cost(sum, DOMESTIC_SLABS)
+                        # Generate the table dynamically
+                        table = [['Tariff Blocks (kWh)', 'Consumption (kWh)', 'Rate (Rs)', 'Amount (Rs)']]
+                        for slab in cost_breakdown:
+                            limit = f"Up to {slab['limit']}" if slab['limit'] != float('inf') else "Above"
+                            table.append([
+                                limit,
+                                str(round(slab['units'])),
+                                str(slab['rate']),
+                                str(round(slab['cost'], 2))
+                            ])
+                        
+                        # Add minimum charge and total
+                        minimum_charge = 3.00  # Example minimum charge
+                        if total_cost < minimum_charge:
+                            total_cost = minimum_charge
+                            table.append(['Minimum Charge', '', '', str(minimum_charge)])
+                        
+                        table.append(['', '', '', ''])
+                        table.append(['Total', str(round(sum)), '', str(round(total_cost, 2))])
+                        
+                        st.table(table)
 
             if option==1:
             
-                table=[['Tariff Blocks(kWh)','Consumption(kWh)','Price(RM)','Amount(RM)'],['200',str(format(round(sum100))),'0.435',str(format(cost100,".2f"))],['Over 200',str(round(sum200)),'0.509',str(format(cost200,".2f"))],['Minimum Monthly Charge','','7.20',str(format(round(minimumc)))],['','','',''],['Total',str(round(sum)),'',str(format(cost,".2f"))]]
+                table=[['Tariff Blocks(kWh)','Consumption(kWh)','Price(rupees)','Amount(rupees)'],['200',str(format(round(sum100))),'0.435',str(format(cost100,".2f"))],['Over 200',str(round(sum200)),'0.509',str(format(cost200,".2f"))],['Minimum Monthly Charge','','7.20',str(format(round(minimumc)))],['','','',''],['Total',str(round(sum)),'',str(format(cost,".2f"))]]
                 st.table(table)
         
             if option==2:
-                table=[['Tariff Blocks(kWh)','Consumption(kWh)','Price(RM)','Amount(RM)'],['For all kWh',str(format(round(sum))),'0.336',str(format(cost,".2f"))],['Maximum Demand Charge',str(format(round(highestdemand))),'23.70',str(round(highestdemand)*23.70)],['Minimum Monthly Charge','','600',str(format(round(minimumc)))],['','','',''],['Total',str(round(tsum)),'',str(format(tcost,".2f"))]]
+                table=[['Tariff Blocks(kWh)','Consumption(kWh)','Price(rupees)','Amount(rupees)'],['For all kWh',str(format(round(sum))),'0.336',str(format(cost,".2f"))],['Maximum Demand Charge',str(format(round(highestdemand))),'23.70',str(round(highestdemand)*23.70)],['Minimum Monthly Charge','','600',str(format(round(minimumc)))],['','','',''],['Total',str(round(tsum)),'',str(format(tcost,".2f"))]]
                 st.table(table)
                 
         
@@ -367,7 +431,7 @@ if data_file is not None:
             st.write(fig2) 
             if option==2:
                 st.subheader("Analysis Report")
-                st.write("We detected that you will be charged for a maximum demand of RM ",format(highestdemand*23.70,".2f"), "[ ", format(highestdemand,".2f")," kW x RM 23.70/kW]")
+                st.write("We detected that you will be charged for a maximum demand of rupees ",format(highestdemand*23.70,".2f"), "[ ", format(highestdemand,".2f")," kW x Rupees 23.70/kW]")
                 st.write("This is due to your highest electrcity consumption, ",format(highestdemand,".2f")," kW on ",highesttime)
                 st.write("[Learn more about Maximum Demand charges](https://www.tnb.com.my/commercial-industrial/maximum-demand)")  
                 st.write("To avoid being charged for a high amount of payment, please do follow the following practise: ") 
@@ -379,8 +443,8 @@ if data_file is not None:
                 st.write("You are eligible to enjoy **20% discount** if you consumed electricity between 10pm to 8am [Off Peak Hour]")
                 st.write("[Learn more about Off Peak Tariff](https://www.mytnb.com.my/business/special-schemes/off-peak-tariff-rider)") 
                 col1, col2, col3 = st.columns(3)
-                col1.metric(label="Original Electrcity Bill (RM)", value=format(tcost,".2f") )
-                col2.metric(label="Deducted Electrcity Bill (RM)", value=format(tcost*80/100,".2f") , delta="-20%")
+                col1.metric(label="Original Electrcity Bill (Rupees)", value=format(tcost,".2f") )
+                col2.metric(label="Deducted Electrcity Bill (Rupees)", value=format(tcost*80/100,".2f") , delta="-20%")
 
                 
 
@@ -392,8 +456,8 @@ if data_file is not None:
                 st.write("You are eligible to enjoy **20% discount** if you consumed electricity between 10pm to 8am [Off Peak Hour]")
                 st.write("[Learn more about Off Peak Tariff](https://www.mytnb.com.my/business/special-schemes/off-peak-tariff-rider)") 
                 col1, col2, col3 = st.columns(3)
-                col1.metric(label="Original Electrcity Bill (RM)", value=format(cost,".2f") )
-                col2.metric(label="Deducted Electrcity Bill (RM)", value=format(cost*80/100,".2f") , delta="-20%")
+                col1.metric(label="Original Electrcity Bill (Rupees)", value=format(cost,".2f") )
+                col2.metric(label="Deducted Electrcity Bill (Rupees)", value=format(cost*80/100,".2f") , delta="-20%")
 
         data_prediction=pd.DataFrame(periodd)
         coded_data=base64.b64encode(data_prediction.to_csv(index=False).encode()).decode()
